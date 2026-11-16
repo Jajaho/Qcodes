@@ -736,8 +736,9 @@ class DataSet(BaseDataSet):
         """
 
         self._metadata[tag] = metadata
-        # `add_data_to_dynamic_columns` is not atomic by itself, hence using `atomic`
-        with atomic(self.conn) as conn:
+        # `add_data_to_dynamic_columns` is not atomic by itself, hence using `atomic`;
+        # it reads before it writes, hence `immediate` (a background writer may write)
+        with atomic(self.conn, immediate=True) as conn:
             add_data_to_dynamic_columns(conn, self.run_id, {tag: metadata})
 
         self._add_metadata_to_netcdf_if_nc_exported(tag, metadata)
@@ -752,7 +753,7 @@ class DataSet(BaseDataSet):
 
         """
         if self.snapshot is None or overwrite:
-            with atomic(self.conn) as conn:
+            with atomic(self.conn, immediate=True) as conn:
                 add_data_to_dynamic_columns(conn, self.run_id, {"snapshot": snapshot})
         elif self.snapshot is not None and not overwrite:
             log.warning(
@@ -1701,8 +1702,9 @@ class DataSet(BaseDataSet):
         data = export_info.to_str()
 
         self._metadata[tag] = data
-        # `add_data_to_dynamic_columns` is not atomic by itself, hence using `atomic`
-        with atomic(self.conn) as conn:
+        # `add_data_to_dynamic_columns` is not atomic by itself, hence using `atomic`;
+        # it reads before it writes, hence `immediate` (a background writer may write)
+        with atomic(self.conn, immediate=True) as conn:
             add_data_to_dynamic_columns(conn, self.run_id, {tag: data})
 
         self._export_info = export_info

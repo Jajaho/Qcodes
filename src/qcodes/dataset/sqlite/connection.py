@@ -97,7 +97,9 @@ atexit.register(close_all_connections)
 
 
 @contextmanager
-def atomic(conn: AtomicConnection) -> Generator[AtomicConnection, None, None]:
+def atomic(
+    conn: AtomicConnection, *, immediate: bool = False
+) -> Generator[AtomicConnection, None, None]:
     """
     Guard a series of transactions as atomic.
 
@@ -112,6 +114,14 @@ def atomic(conn: AtomicConnection) -> Generator[AtomicConnection, None, None]:
 
     Args:
         conn: connection to guard
+        immediate: Start the transaction with 'BEGIN IMMEDIATE', which takes
+            the write lock at once and waits for it as long as the timeout of
+            the connection. Use this for a transaction that reads from the
+            database before it writes to it while another connection may write,
+            such as the background writer of a measurement. In a transaction
+            started with 'BEGIN', SQLite does not wait for the write lock after
+            a read but raises "database is locked". Has no effect on an atomic
+            nested in another one, which continues the outer transaction.
 
     """
     with DelayedKeyboardInterrupt(context={"reason": "sqlite atomic operation"}):
@@ -138,7 +148,7 @@ def atomic(conn: AtomicConnection) -> Generator[AtomicConnection, None, None]:
         try:
             if is_outmost:
                 conn.isolation_level = None
-                conn.cursor().execute("BEGIN")
+                conn.cursor().execute("BEGIN IMMEDIATE" if immediate else "BEGIN")
             yield conn
         except KeyboardInterrupt:
             conn.rollback()

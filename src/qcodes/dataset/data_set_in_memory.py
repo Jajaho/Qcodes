@@ -623,7 +623,7 @@ class DataSetInMem(BaseDataSet):
                 contextlib.closing(
                     conn_from_dbpath_or_conn(conn=None, path_to_db=self._path_to_db)
                 ) as conn,
-                atomic(conn) as aconn,
+                atomic(conn, immediate=True) as aconn,
             ):
                 add_data_to_dynamic_columns(aconn, self.run_id, {tag: data})
 
